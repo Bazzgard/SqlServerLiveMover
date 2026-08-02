@@ -1,0 +1,186 @@
+<Window x:Class="SqlServerLiveMover.Gui.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="SQL Server Live Mover" Height="820" Width="1220"
+        MinHeight="720" MinWidth="1040" WindowStartupLocation="CenterScreen"
+        Background="{StaticResource PageBrush}" Closing="Window_Closing">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="92" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="58" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="#102A43">
+            <Grid Margin="32,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="SQL SERVER LIVE MOVER" Foreground="#6FE7E7"
+                               FontSize="12" FontWeight="Bold" />
+                    <TextBlock Text="テーブルコピーと差分更新" Foreground="White"
+                               FontSize="26" FontWeight="SemiBold" Margin="0,5,0,0" />
+                </StackPanel>
+                <Border Grid.Column="1" Background="#183B56" CornerRadius="18"
+                        Padding="14,7" VerticalAlignment="Center">
+                    <TextBlock Text="移行元は読み取り専用" Foreground="#BEE3F8" FontSize="12" />
+                </Border>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1" Margin="24">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="3*" />
+                    <RowDefinition Height="16" />
+                    <RowDefinition Height="2*" />
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0" Background="White" CornerRadius="8" Padding="22">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Grid Margin="0,0,0,18">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="対象テーブル" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock Text="列を空欄にすると、コピー可能な全列を対象にします。"
+                                           Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,4,0,0" />
+                            </StackPanel>
+                            <WrapPanel Grid.Column="1" VerticalAlignment="Top">
+                                <Button Content="接続と実行設定" Style="{StaticResource SecondaryButton}"
+                                        Click="Settings_Click" Margin="0,0,8,0" />
+                                <Button Content="バックアップ管理" Style="{StaticResource SecondaryButton}"
+                                        Click="BackupManager_Click" />
+                            </WrapPanel>
+                        </Grid>
+
+                        <Grid Grid.Row="1" Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Grid Width="610" HorizontalAlignment="Left">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="1*" />
+                                    <ColumnDefinition Width="52" />
+                                    <ColumnDefinition Width="1*" />
+                                </Grid.ColumnDefinitions>
+                                <Border Grid.Column="0" Background="#EDF8F8" CornerRadius="7" Padding="15,10">
+                                    <StackPanel>
+                                        <TextBlock Text="移行元サーバー" Foreground="{StaticResource AccentBrush}"
+                                                   FontSize="11" FontWeight="Bold" />
+                                        <TextBlock x:Name="SourceServerText" Text="未設定" FontSize="19"
+                                                   FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock x:Name="SourceDatabaseText" Text="データベース: 未設定"
+                                                   Foreground="{StaticResource MutedBrush}" FontSize="11" />
+                                    </StackPanel>
+                                </Border>
+                                <TextBlock Grid.Column="1" Text="→" FontSize="25" Foreground="{StaticResource MutedBrush}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <Border Grid.Column="2" Background="#EEF4FA" CornerRadius="7" Padding="15,10">
+                                    <StackPanel>
+                                        <TextBlock Text="移行先サーバー" Foreground="#2F6690"
+                                                   FontSize="11" FontWeight="Bold" />
+                                        <TextBlock x:Name="TargetServerText" Text="未設定" FontSize="19"
+                                                   FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock x:Name="TargetDatabaseText" Text="データベース: 未設定"
+                                                   Foreground="{StaticResource MutedBrush}" FontSize="11" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                            <WrapPanel Grid.Column="1" VerticalAlignment="Bottom" Margin="24,0,0,0">
+                                <Button Content="＋ 追加" Style="{StaticResource SecondaryButton}"
+                                        Click="AddTable_Click" Margin="0,0,8,0" />
+                                <Button Content="－ 削除" Style="{StaticResource SecondaryButton}"
+                                        Click="RemoveTable_Click" />
+                            </WrapPanel>
+                        </Grid>
+
+                        <DataGrid x:Name="TablesGrid" Grid.Row="2" ItemsSource="{Binding Tables}"
+                                  AutoGenerateColumns="False" CanUserAddRows="False" SelectionMode="Single"
+                                  GridLinesVisibility="Horizontal" HeadersVisibility="Column"
+                                  BorderBrush="#D5DEE7" RowHeaderWidth="0" RowHeight="42"
+                                  FontFamily="Yu Gothic UI" FontSize="12">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="移行元" Binding="{Binding Source, UpdateSourceTrigger=PropertyChanged}" Width="1.2*" />
+                                <DataGridTextColumn Header="移行先" Binding="{Binding Target, UpdateSourceTrigger=PropertyChanged}" Width="1.2*" />
+                                <DataGridTextColumn Header="列（カンマ区切り）" Binding="{Binding ColumnsText, UpdateSourceTrigger=PropertyChanged}" Width="1.5*" />
+                                <DataGridTemplateColumn Header="処理方式" Width="1.45*">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <ComboBox SelectedValue="{Binding OperationMode, UpdateSourceTrigger=PropertyChanged}"
+                                                      SelectedValuePath="Tag" Margin="4">
+                                                <ComboBoxItem Content="差分更新（削除なし）" Tag="upsertKeep" />
+                                                <ComboBoxItem Content="差分更新（削除あり）" Tag="upsertDelete" />
+                                                <ComboBoxItem Content="空テーブルのみ" Tag="emptyOnly" />
+                                                <ComboBoxItem Content="全削除してコピー" Tag="replace" />
+                                            </ComboBox>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Row="2" Background="#0B1F33" CornerRadius="8" Padding="18">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="実行ログ" Foreground="#D9EAF5" FontWeight="SemiBold" />
+                            <Button Grid.Column="1" Content="クリア" Foreground="#8FB3C9" Background="Transparent"
+                                    BorderThickness="0" Cursor="Hand" Click="ClearLog_Click" />
+                        </Grid>
+                        <TextBox x:Name="LogTextBox" Grid.Row="1" IsReadOnly="True" AcceptsReturn="True"
+                                 VerticalScrollBarVisibility="Auto" TextWrapping="Wrap"
+                                 Background="Transparent" Foreground="#BEE3F8" BorderThickness="0"
+                                 Padding="0" FontFamily="Consolas, Yu Gothic UI" FontSize="12" />
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <Border Grid.Row="2" Background="White" BorderBrush="#D9E2EC" BorderThickness="0,1,0,0">
+            <Grid Margin="24,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <ProgressBar x:Name="BusyProgress" Width="110" Height="5" IsIndeterminate="True"
+                                 Visibility="Collapsed" Foreground="{StaticResource AccentBrush}" />
+                    <TextBlock x:Name="StatusText" Text="準備完了" Foreground="{StaticResource MutedBrush}"
+                               Margin="12,0,0,0" VerticalAlignment="Center" />
+                </StackPanel>
+                <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                    <CheckBox Content="事前バックアップ" IsChecked="{Binding BackupBeforeCopy}"
+                              VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,16,0" />
+                    <Button x:Name="CancelButton" Content="中止" Style="{StaticResource SecondaryButton}"
+                            Click="Cancel_Click" IsEnabled="False" Margin="0,0,8,0" />
+                    <Button x:Name="PreflightButton" Content="1  事前検査" Style="{StaticResource SecondaryButton}"
+                            Click="Preflight_Click" Margin="0,0,8,0" />
+                    <Button x:Name="CopyButton" Content="2  コピー／差分更新" Style="{StaticResource PrimaryButton}"
+                            Click="Copy_Click" Margin="0,0,8,0" />
+                    <Button x:Name="VerifyButton" Content="3  件数検証" Style="{StaticResource SecondaryButton}"
+                            Click="Verify_Click" />
+                </WrapPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

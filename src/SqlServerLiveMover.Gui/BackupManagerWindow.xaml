@@ -1,0 +1,77 @@
+<Window x:Class="SqlServerLiveMover.Gui.BackupManagerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="バックアップテーブル管理" Height="590" Width="980"
+        MinHeight="480" MinWidth="820" WindowStartupLocation="CenterOwner"
+        Background="{StaticResource PageBrush}" Loaded="Window_Loaded">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="82" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="64" />
+        </Grid.RowDefinitions>
+        <Border Background="#102A43">
+            <Grid Margin="28,0">
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="BACKUP CATALOG" Foreground="#6FE7E7" FontSize="11" FontWeight="Bold" />
+                    <TextBlock Text="バックアップテーブル管理" Foreground="White" FontSize="23"
+                               FontWeight="SemiBold" Margin="0,4,0,0" />
+                </StackPanel>
+            </Grid>
+        </Border>
+        <Border Grid.Row="1" Margin="22" Background="White" CornerRadius="8" Padding="18">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <TextBlock Text="復元すると現在の対象テーブルを自動バックアップしてから置き換えます。"
+                           Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,0,0,12" />
+                <DataGrid x:Name="BackupsGrid" Grid.Row="1" ItemsSource="{Binding Backups}"
+                          AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
+                          SelectionMode="Single" SelectionChanged="BackupsGrid_SelectionChanged"
+                          GridLinesVisibility="Horizontal" RowHeaderWidth="0" RowHeight="38"
+                          BorderBrush="#D5DEE7" FontFamily="Yu Gothic UI" FontSize="12">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="作成日時（UTC）" Binding="{Binding CreatedAtUtc, StringFormat=yyyy-MM-dd HH:mm:ss}" Width="145" />
+                        <DataGridTextColumn Header="バックアップテーブル" Binding="{Binding BackupQualifiedName}" Width="2.1*" />
+                        <DataGridTextColumn Header="復元先" Binding="{Binding TargetQualifiedName}" Width="1.25*" />
+                        <DataGridTextColumn Header="行数" Binding="{Binding RowCount, StringFormat=N0}" Width="85" />
+                        <DataGridTextColumn Header="理由" Binding="{Binding Reason}" Width="90" />
+                        <DataGridCheckBoxColumn Header="推定" Binding="{Binding IsInferred}" Width="55" />
+                    </DataGrid.Columns>
+                </DataGrid>
+                <TextBox x:Name="ManagerLog" Grid.Row="2" IsReadOnly="True" Height="54"
+                         Margin="0,12,0,0" VerticalScrollBarVisibility="Auto"
+                         Background="#F4F7FA" BorderThickness="0" FontSize="11" />
+            </Grid>
+        </Border>
+        <Border Grid.Row="2" Background="White" BorderBrush="#D9E2EC" BorderThickness="0,1,0,0">
+            <Grid Margin="22,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <ProgressBar x:Name="BusyProgress" Width="100" Height="5" IsIndeterminate="True"
+                                 Visibility="Collapsed" Foreground="{StaticResource AccentBrush}" />
+                    <TextBlock x:Name="StatusText" Text="準備中" Margin="10,0,0,0"
+                               Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" />
+                </StackPanel>
+                <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                    <CheckBox x:Name="BackupBeforeRestoreCheckBox" Content="復元前に事前バックアップ"
+                              IsChecked="True" VerticalAlignment="Center" FontWeight="SemiBold"
+                              Margin="0,0,16,0" />
+                    <Button Content="更新" Style="{StaticResource SecondaryButton}" Click="Refresh_Click" Margin="0,0,8,0" />
+                    <Button x:Name="RestoreButton" Content="選択したバックアップを復元"
+                            Style="{StaticResource PrimaryButton}" Click="Restore_Click"
+                            IsEnabled="False" Margin="0,0,8,0" />
+                    <Button x:Name="DeleteButton" Content="削除" Style="{StaticResource SecondaryButton}"
+                            Click="Delete_Click" IsEnabled="False" Margin="0,0,8,0" />
+                    <Button Content="閉じる" Style="{StaticResource SecondaryButton}" Click="Close_Click" />
+                </WrapPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

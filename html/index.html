@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="SQL Server Live Moverは、稼働中のSQL Serverから必要なテーブルだけを安全にコピー・差分更新するWindowsツールです。">
+  <title>SQL Server Live Mover</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="site-config.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="SQL Server Live Mover トップ">
+      <span class="brand-mark" aria-hidden="true">SL</span>
+      <span>SQL Server Live Mover</span>
+    </a>
+    <nav class="nav" aria-label="ページ内ナビゲーション">
+      <a href="#features">特長</a>
+      <a href="help.html">使い方</a>
+      <a href="#download" data-download hidden>ダウンロード</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">SQL SERVER TABLE MIGRATION</p>
+        <h1>稼働中のデータベースを、<br><span>必要なテーブルだけ</span>安全に移行。</h1>
+        <p class="hero-lead">
+          SQL Server間のデータコピー、差分更新、事前バックアップをひとつの画面で。
+          一度きりの移行作業を、確認しながら確実に進められます。
+        </p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="#features">機能を見る</a>
+          <a class="button button-secondary" href="#download" data-download hidden>ダウンロード</a>
+        </div>
+        <ul class="hero-points" aria-label="主な特長">
+          <li>移行元は読み取り専用</li>
+          <li>一部テーブルに対応</li>
+          <li>削除あり・なしを選択</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="trust-strip" aria-label="対応機能">
+      <p>差分更新</p>
+      <p>空テーブルのみ</p>
+      <p>全削除してコピー</p>
+      <p>バックアップ・復元</p>
+      <p>件数検証</p>
+    </section>
+
+    <section class="section" id="features">
+      <div class="section-heading">
+        <p class="eyebrow">FEATURES</p>
+        <h2>移行作業に必要な判断を、画面上で明確に。</h2>
+        <p>対象テーブルごとに処理方式を選択し、実行前後の確認まで一貫して行えます。</p>
+      </div>
+      <div class="feature-grid">
+        <article class="feature-card featured">
+          <span class="feature-number">01</span>
+          <h3>稼働中のままコピー</h3>
+          <p>移行元へ書き込まず、選択した読み取り整合性でデータを取得。業務を止めにくい移行に対応します。</p>
+        </article>
+        <article class="feature-card">
+          <span class="feature-number">02</span>
+          <h3>テーブル単位で方式を選択</h3>
+          <p>差分更新（削除なし・あり）、空テーブルのみ、全削除してコピーの4方式を選べます。</p>
+        </article>
+        <article class="feature-card">
+          <span class="feature-number">03</span>
+          <h3>実行前にバックアップ</h3>
+          <p>移行先テーブルを事前保存。ローカル管理画面から不要なバックアップの削除や復元ができます。</p>
+        </article>
+        <article class="feature-card">
+          <span class="feature-number">04</span>
+          <h3>設定を保存して再利用</h3>
+          <p>接続先、対象テーブル、処理方式をJSONへ保存。前回の画面内容も次回起動時に復元します。</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section flow-section" id="flow">
+      <div class="section-heading left">
+        <p class="eyebrow">WORKFLOW</p>
+        <h2>3つのステップで移行を完了。</h2>
+      </div>
+      <ol class="flow-list">
+        <li>
+          <span>1</span>
+          <div><h3>事前検査</h3><p>接続、テーブル構造、主キー、コピー条件を実行前に確認します。</p></div>
+        </li>
+        <li>
+          <span>2</span>
+          <div><h3>コピー／差分更新</h3><p>選択した方式で対象テーブルを処理し、進捗をログへ表示します。</p></div>
+        </li>
+        <li>
+          <span>3</span>
+          <div><h3>件数検証</h3><p>移行元と移行先の件数を比較し、結果をその場で確認します。</p></div>
+        </li>
+      </ol>
+      <a class="button button-secondary flow-help-link" href="help.html">詳しい使い方を見る</a>
+    </section>
+
+    <section class="download-section" id="download" data-download hidden>
+      <div>
+        <p class="eyebrow light">DOWNLOAD</p>
+        <h2>SQL Server Live Moverをダウンロード</h2>
+        <p>Windows向けパッケージです。利用前に接続先と対象テーブルをご確認ください。</p>
+        <p class="version" data-version hidden></p>
+      </div>
+      <a class="button button-light" href="#" data-download-link>ダウンロード</a>
+    </section>
+  </main>
+
+  <footer>
+    <span>SQL Server Live Mover</span>
+    <small>安全なテーブル移行を、わかりやすく。</small>
+  </footer>
+</body>
+</html>

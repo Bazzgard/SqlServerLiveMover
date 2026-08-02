@@ -1,0 +1,22 @@
+{
+  "sourceConnectionString": "${SQL_MOVER_SOURCE}",
+  "targetConnectionString": "${SQL_MOVER_TARGET}",
+  "batchSize": 5000,
+  "commandTimeoutSeconds": 120,
+  "sourceConsistency": "snapshot",
+  "tables": [
+    {
+      "source": "dbo.Customers",
+      "target": "dbo.Customers",
+      "operationMode": "emptyOnly",
+      "backupBeforeCopy": true
+    },
+    {
+      "source": "sales.Orders",
+      "target": "archive.Orders",
+      "columns": ["OrderId", "CustomerId", "OrderDate", "Status"],
+      "operationMode": "upsertKeep",
+      "backupBeforeCopy": true
+    }
+  ]
+}

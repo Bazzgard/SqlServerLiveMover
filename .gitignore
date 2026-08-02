@@ -1,0 +1,14 @@
+.dotnet-home/
+.dotnet-cli/
+.appdata/
+.localappdata/
+.nuget/
+.vs/
+bin/
+obj/
+artifacts/
+logs/
+mover.json
+*.tmp
+*.user
+*.suo
