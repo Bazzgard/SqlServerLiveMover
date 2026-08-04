@@ -92,6 +92,14 @@ public partial class MainWindow : Window
         }
     }
 
+    private void CompareMigration_Click(object sender, RoutedEventArgs e)
+    {
+        CommitGridEdits();
+        SaveLastSession();
+        var window = new CompareMigrationWindow(document) { Owner = this };
+        window.ShowDialog();
+    }
+
     private async void Preflight_Click(object sender, RoutedEventArgs e) =>
         await RunOperationAsync("事前検査", static (engine, token) => engine.PreflightAsync(token));
 

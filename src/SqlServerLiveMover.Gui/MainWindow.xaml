@@ -56,6 +56,8 @@
                                            Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,4,0,0" />
                             </StackPanel>
                             <WrapPanel Grid.Column="1" VerticalAlignment="Top">
+                                <Button Content="比較して移行" Style="{StaticResource PrimaryButton}"
+                                        Click="CompareMigration_Click" Margin="0,0,8,0" />
                                 <Button Content="接続と実行設定" Style="{StaticResource SecondaryButton}"
                                         Click="Settings_Click" Margin="0,0,8,0" />
                                 <Button Content="バックアップ管理" Style="{StaticResource SecondaryButton}"

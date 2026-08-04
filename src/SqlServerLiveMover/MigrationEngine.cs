@@ -67,6 +67,56 @@ internal sealed class MigrationEngine
         log("コピーが完了しました。移行元のデータや設定は変更していません。");
     }
 
+    public async Task CopySelectedRowsAsync(
+        IReadOnlyList<object[]> primaryKeyValues,
+        CancellationToken cancellationToken)
+    {
+        if (primaryKeyValues.Count == 0)
+            throw new InvalidOperationException("移行するデータが選択されていません。");
+        if (config.Tables.Count != 1)
+            throw new InvalidOperationException("選択行の移行では対象テーブルを1件だけ指定してください。");
+
+        await using var source = await OpenAsync(config.SourceConnectionString, cancellationToken);
+        await using var target = await OpenAsync(config.TargetConnectionString, cancellationToken);
+        var (plans, isolation) = await new PlanBuilder(config).BuildAsync(source, target, cancellationToken);
+        ValidateConsistency(isolation);
+        var plan = plans.Single();
+        if (plan.Keys.Count == 0)
+            throw new InvalidOperationException($"行を選択して移行するには主キーが必要です: {plan.Source.Name.Canonical}");
+        if (primaryKeyValues.Any(values => values.Length != plan.Keys.Count))
+            throw new InvalidOperationException("選択された主キーの列数がテーブル定義と一致しません。");
+
+        await BackupTargetForSelectedRowsAsync(target, plan, cancellationToken);
+        await using var sourceTransaction = (SqlTransaction)await source.BeginTransactionAsync(
+            GetIsolationLevel(), cancellationToken);
+        await using var targetTransaction = (SqlTransaction)await target.BeginTransactionAsync(cancellationToken);
+        var sourceCommitted = false;
+        var targetCommitted = false;
+        try
+        {
+            var result = await UpsertRowsAsync(
+                source,
+                target,
+                sourceTransaction,
+                targetTransaction,
+                plan,
+                cancellationToken,
+                primaryKeyValues);
+            await sourceTransaction.CommitAsync(cancellationToken);
+            sourceCommitted = true;
+            await targetTransaction.CommitAsync(cancellationToken);
+            targetCommitted = true;
+            log($"選択行の移行完了: {plan.Source.Name.Canonical} " +
+                $"(選択 {primaryKeyValues.Count:N0}行, 追加 {result.Inserted:N0}行, 更新 {result.Updated:N0}行)");
+        }
+        catch
+        {
+            if (!targetCommitted) await targetTransaction.RollbackAsync(CancellationToken.None);
+            if (!sourceCommitted) await sourceTransaction.RollbackAsync(CancellationToken.None);
+            throw;
+        }
+    }
+
     public async Task VerifyAsync(CancellationToken cancellationToken)
     {
         await using var source = await OpenAsync(config.SourceConnectionString, cancellationToken);
@@ -133,6 +183,16 @@ internal sealed class MigrationEngine
         await service.CreateAsync(target, plan.Target, "copy", cancellationToken);
     }
 
+    private async Task BackupTargetForSelectedRowsAsync(
+        SqlConnection target,
+        TablePlan plan,
+        CancellationToken cancellationToken)
+    {
+        if (!plan.Config.BackupBeforeCopy) return;
+        var service = new BackupService(config.CommandTimeoutSeconds, log);
+        await service.CreateAsync(target, plan.Target, "selected-copy", cancellationToken);
+    }
+
     private async Task PrepareTargetAsync(
         SqlConnection target,
         SqlTransaction transaction,
@@ -188,7 +248,8 @@ internal sealed class MigrationEngine
         SqlTransaction sourceTransaction,
         SqlTransaction targetTransaction,
         TablePlan plan,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IReadOnlyList<object[]>? selectedPrimaryKeys = null)
     {
         const string stage = "#SqlMoverStage";
         var columns = ColumnList(plan.Columns);
@@ -200,20 +261,25 @@ internal sealed class MigrationEngine
             """;
         await ExecuteAsync(target, targetTransaction, createStageSql, cancellationToken);
 
-        await using (var sourceCommand = new SqlCommand(
-                         $"SELECT {columns} FROM {plan.Source.Name.Quoted};", source, sourceTransaction)
-                     { CommandTimeout = config.CommandTimeoutSeconds })
-        await using (var reader = await sourceCommand.ExecuteReaderAsync(
-                         CommandBehavior.SequentialAccess, cancellationToken))
-        using (var bulk = new SqlBulkCopy(target, SqlBulkCopyOptions.KeepIdentity, targetTransaction)
-               {
-                   DestinationTableName = stage,
-                   BatchSize = config.BatchSize,
-                   BulkCopyTimeout = config.CommandTimeoutSeconds,
-                   EnableStreaming = true,
-                   NotifyAfter = config.BatchSize
-               })
+        var keyBatches = selectedPrimaryKeys is null
+            ? new IReadOnlyList<object[]>?[] { null }
+            : selectedPrimaryKeys.Chunk(Math.Max(1, 2_000 / plan.Keys.Count))
+                .Select(batch => (IReadOnlyList<object[]>?)batch)
+                .ToArray();
+        foreach (var keyBatch in keyBatches)
         {
+            await using var sourceCommand = CreateSourceSelectCommand(
+                source, sourceTransaction, plan, columns, keyBatch);
+            await using var reader = await sourceCommand.ExecuteReaderAsync(
+                CommandBehavior.SequentialAccess, cancellationToken);
+            using var bulk = new SqlBulkCopy(target, SqlBulkCopyOptions.KeepIdentity, targetTransaction)
+            {
+                DestinationTableName = stage,
+                BatchSize = config.BatchSize,
+                BulkCopyTimeout = config.CommandTimeoutSeconds,
+                EnableStreaming = true,
+                NotifyAfter = config.BatchSize
+            };
             foreach (var column in plan.Columns)
                 bulk.ColumnMappings.Add(column.Name, column.Name);
             bulk.SqlRowsCopied += (_, args) =>
@@ -285,7 +351,7 @@ internal sealed class MigrationEngine
         var inserted = await ExecuteScalarIntAsync(target, targetTransaction, insertSql, cancellationToken);
 
         var deleted = 0;
-        if (plan.Config.EffectiveDeleteMissing)
+        if (selectedPrimaryKeys is null && plan.Config.EffectiveDeleteMissing)
         {
             var deleteSql = $"""
                 DELETE T
@@ -300,6 +366,41 @@ internal sealed class MigrationEngine
 
         await ExecuteAsync(target, targetTransaction, $"DROP TABLE {stage};", cancellationToken);
         return new DifferenceResult(inserted, updated, deleted);
+    }
+
+    private SqlCommand CreateSourceSelectCommand(
+        SqlConnection source,
+        SqlTransaction sourceTransaction,
+        TablePlan plan,
+        string columns,
+        IReadOnlyList<object[]>? selectedPrimaryKeys)
+    {
+        if (selectedPrimaryKeys is null)
+            return new SqlCommand(
+                $"SELECT {columns} FROM {plan.Source.Name.Quoted};",
+                source,
+                sourceTransaction)
+            {
+                CommandTimeout = config.CommandTimeoutSeconds
+            };
+
+        var predicates = new List<string>(selectedPrimaryKeys.Count);
+        var command = new SqlCommand { Connection = source, Transaction = sourceTransaction };
+        command.CommandTimeout = config.CommandTimeoutSeconds;
+        for (var rowIndex = 0; rowIndex < selectedPrimaryKeys.Count; rowIndex++)
+        {
+            var keyPredicates = new List<string>(plan.Keys.Count);
+            for (var keyIndex = 0; keyIndex < plan.Keys.Count; keyIndex++)
+            {
+                var parameterName = $"@k{rowIndex}_{keyIndex}";
+                keyPredicates.Add($"{SqlName.Quote(plan.Keys[keyIndex])} = {parameterName}");
+                command.Parameters.AddWithValue(parameterName, selectedPrimaryKeys[rowIndex][keyIndex]);
+            }
+            predicates.Add($"({string.Join(" AND ", keyPredicates)})");
+        }
+        command.CommandText =
+            $"SELECT {columns} FROM {plan.Source.Name.Quoted} WHERE {string.Join(" OR ", predicates)};";
+        return command;
     }
 
     private void ValidateConsistency(DatabaseIsolationOptions options)
