@@ -21,10 +21,10 @@
             <Setter Property="Background" Value="#E7EEF5" />
             <Setter Property="Foreground" Value="#152536" />
             <Setter Property="FontFamily" Value="Yu Gothic UI" />
-            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontSize" Value="15" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Padding" Value="10,0" />
-            <Setter Property="Height" Value="38" />
+            <Setter Property="Height" Value="42" />
             <Setter Property="BorderBrush" Value="#C7D2DD" />
             <Setter Property="BorderThickness" Value="0,0,1,1" />
         </Style>
@@ -36,7 +36,7 @@
             <Setter Property="GridLinesVisibility" Value="Horizontal" />
             <Setter Property="HeadersVisibility" Value="Column" />
             <Setter Property="RowHeaderWidth" Value="0" />
-            <Setter Property="RowHeight" Value="38" />
+            <Setter Property="RowHeight" Value="42" />
             <Setter Property="BorderBrush" Value="#D5DEE7" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Background" Value="White" />
@@ -45,7 +45,7 @@
             <Setter Property="AlternatingRowBackground" Value="#F6F9FC" />
             <Setter Property="AlternationCount" Value="2" />
             <Setter Property="FontFamily" Value="Consolas, Yu Gothic UI" />
-            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontSize" Value="15" />
             <Setter Property="CellStyle" Value="{StaticResource PreviewGridCell}" />
             <Setter Property="ColumnHeaderStyle" Value="{StaticResource PreviewGridHeader}" />
             <Setter Property="HorizontalScrollBarVisibility" Value="Auto" />
@@ -217,8 +217,9 @@
                                Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" />
                 </StackPanel>
                 <WrapPanel Grid.Column="1" VerticalAlignment="Center">
-                    <Button x:Name="SelectVisibleRowsButton" Content="表示データを全選択"
-                            Style="{StaticResource SecondaryButton}" Click="SelectVisibleRows_Click" Margin="0,0,8,0" />
+                    <CheckBox x:Name="BackupBeforeCopyCheckBox" Content="事前バックアップ"
+                              VerticalAlignment="Center" Margin="0,0,14,0"
+                              ToolTip="移行前に移行先テーブル全体をバックアップします" />
                     <Button x:Name="ClearRowsButton" Content="データ選択解除"
                             Style="{StaticResource SecondaryButton}" Click="ClearRows_Click" Margin="0,0,8,0" />
                     <Button x:Name="RefreshButton" Content="プレビュー更新" Style="{StaticResource SecondaryButton}"

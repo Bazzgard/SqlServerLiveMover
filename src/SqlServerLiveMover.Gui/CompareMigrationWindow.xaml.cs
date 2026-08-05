@@ -387,27 +387,6 @@ public partial class CompareMigrationWindow : Window
         UpdateRowSelectionSummary();
     }
 
-    private void SelectVisibleRows_Click(object sender, RoutedEventArgs e)
-    {
-        isSynchronizingSelection = true;
-        try
-        {
-            SourcePreviewGrid.SelectedItems.Clear();
-            TargetPreviewGrid.SelectedItems.Clear();
-            for (var index = 0; index < currentAlignedRows.Count; index++)
-            {
-                if (currentAlignedRows[index].Source is null) continue;
-                SourcePreviewGrid.SelectedItems.Add(SourcePreviewGrid.Items[index]);
-                TargetPreviewGrid.SelectedItems.Add(TargetPreviewGrid.Items[index]);
-            }
-        }
-        finally
-        {
-            isSynchronizingSelection = false;
-        }
-        UpdateRowSelectionSummary();
-    }
-
     private void ClearRows_Click(object sender, RoutedEventArgs e)
     {
         isSynchronizingSelection = true;
@@ -475,7 +454,8 @@ public partial class CompareMigrationWindow : Window
             return;
         }
 
-        var backup = document.BackupBeforeCopy ? "事前バックアップ: 有効" : "事前バックアップ: 無効";
+        var backupBeforeCopy = BackupBeforeCopyCheckBox.IsChecked == true;
+        var backup = backupBeforeCopy ? "事前バックアップ: 有効" : "事前バックアップ: 無効";
         if (!MessageDialogWindow.Confirm(
                 this,
                 $"{selectedKeys.Count:N0}件のデータを移行",
@@ -546,7 +526,7 @@ public partial class CompareMigrationWindow : Window
             BatchSize = document.BatchSize,
             CommandTimeoutSeconds = document.CommandTimeoutSeconds,
             SourceConsistency = document.SourceConsistency,
-            BackupBeforeCopy = document.BackupBeforeCopy
+            BackupBeforeCopy = BackupBeforeCopyCheckBox.IsChecked == true
         };
         result.Tables.Add(new TableDocument
         {
@@ -558,7 +538,7 @@ public partial class CompareMigrationWindow : Window
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToList(),
             OperationMode = "upsertKeep",
-            BackupBeforeCopy = document.BackupBeforeCopy
+            BackupBeforeCopy = BackupBeforeCopyCheckBox.IsChecked == true
         });
         result.ApplyGlobalSettings();
         return result;
@@ -619,7 +599,7 @@ public partial class CompareMigrationWindow : Window
         CancelButton.IsEnabled = busy;
         RefreshButton.IsEnabled = !busy;
         TableList.IsEnabled = !busy;
-        SelectVisibleRowsButton.IsEnabled = !busy;
+        BackupBeforeCopyCheckBox.IsEnabled = !busy;
         ClearRowsButton.IsEnabled = !busy;
         MoveButton.IsEnabled = !busy && GetSelectedPrimaryKeys().Count > 0;
         PreflightButton.IsEnabled = !busy && TableList.SelectedItem is not null;
