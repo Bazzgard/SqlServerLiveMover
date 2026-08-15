@@ -79,6 +79,8 @@
                             Click="Cancel_Click" Margin="0,0,8,0" IsCancel="True" />
                     <Button Content="読込" Style="{StaticResource SecondaryButton}"
                             Click="LoadConfig_Click" Margin="0,0,8,0" />
+                    <Button Content="別名で保存" Style="{StaticResource SecondaryButton}"
+                            Click="SaveConfigAs_Click" Margin="0,0,8,0" />
                     <Button Content="保存" Style="{StaticResource PrimaryButton}"
                             Click="SaveConfig_Click" IsDefault="True" />
                 </StackPanel>

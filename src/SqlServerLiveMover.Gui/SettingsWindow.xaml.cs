@@ -74,23 +74,41 @@ public partial class SettingsWindow : Window
     {
         if (ConfigPath is null)
         {
-            var dialog = new SaveFileDialog
-            {
-                Title = "移行設定を保存",
-                Filter = "JSON設定 (*.json)|*.json",
-                FileName = "mover.json",
-                InitialDirectory = AppContext.BaseDirectory,
-                AddExtension = true,
-                DefaultExt = ".json"
-            };
-            if (dialog.ShowDialog(this) != true) return;
-            ConfigPath = dialog.FileName;
+            SaveConfigAs();
+            return;
         }
 
+        SaveConfig(ConfigPath);
+    }
+
+    private void SaveConfigAs_Click(object sender, RoutedEventArgs e) => SaveConfigAs();
+
+    private void SaveConfigAs()
+    {
+        var previousDirectory = ConfigPath is null ? null : Path.GetDirectoryName(ConfigPath);
+        var dialog = new SaveFileDialog
+        {
+            Title = "移行設定を別名で保存",
+            Filter = "JSON設定 (*.json)|*.json",
+            FileName = ConfigPath is null ? "mover.json" : Path.GetFileName(ConfigPath),
+            InitialDirectory = Directory.Exists(previousDirectory)
+                ? previousDirectory
+                : AppContext.BaseDirectory,
+            AddExtension = true,
+            DefaultExt = ".json"
+        };
+        if (dialog.ShowDialog(this) != true) return;
+
+        SaveConfig(dialog.FileName);
+    }
+
+    private void SaveConfig(string path)
+    {
         try
         {
             Document.ApplyGlobalSettings();
-            File.WriteAllText(ConfigPath, JsonSerializer.Serialize(Document, JsonOptions));
+            File.WriteAllText(path, JsonSerializer.Serialize(Document, JsonOptions));
+            ConfigPath = path;
             UpdateConfigPath();
             DialogResult = true;
         }
