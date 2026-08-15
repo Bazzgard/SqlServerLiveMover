@@ -26,7 +26,11 @@ public partial class CompareMigrationWindow : Window
     private CancellationTokenSource? previewCancellation;
     private readonly HashSet<string> currentPrimaryKeys = new(StringComparer.OrdinalIgnoreCase);
     private IReadOnlyList<AlignedPreviewRow> currentAlignedRows = [];
+    private IReadOnlyList<AlignedPreviewRow> visibleAlignedRows = [];
+    private IReadOnlyList<string> currentPreviewColumns = [];
     private bool isBusy;
+    private bool isReverseMigration;
+    private bool isTablePanelCollapsed;
     private bool isSynchronizingScroll;
     private bool isSynchronizingSelection;
 
@@ -39,7 +43,7 @@ public partial class CompareMigrationWindow : Window
         foreach (var table in document.Tables)
             Items.Add(new MigrationSelectionItem(table));
         DataContext = this;
-        EndpointText.Text = DescribeEndpoints();
+        UpdateDirectionPresentation();
         UpdateSelectionSummary();
     }
 
@@ -67,6 +71,97 @@ public partial class CompareMigrationWindow : Window
     private async void Refresh_Click(object sender, RoutedEventArgs e) =>
         await RefreshCurrentPreviewAsync();
 
+    private void PreviewFilter_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (!IsInitialized) return;
+        ApplyPreviewFilter();
+    }
+
+    private void ClearPreviewFilter_Click(object sender, RoutedEventArgs e)
+    {
+        PreviewFilterTextBox.Clear();
+        PreviewFilterTextBox.Focus();
+    }
+
+    private void ApplyPreviewFilter()
+    {
+        if (currentPreviewColumns.Count == 0) return;
+
+        var filter = PreviewFilterTextBox.Text.Trim();
+        visibleAlignedRows = string.IsNullOrEmpty(filter)
+            ? currentAlignedRows
+            : currentAlignedRows.Where(row => MatchesFilter(row.Source, filter) ||
+                                               MatchesFilter(row.Target, filter))
+                .ToList();
+
+        var sourceTable = CreatePreviewTable(currentPreviewColumns);
+        var targetTable = CreatePreviewTable(currentPreviewColumns);
+        foreach (var row in visibleAlignedRows)
+        {
+            AddPreviewRow(sourceTable, row.Source);
+            AddPreviewRow(targetTable, row.Target);
+        }
+
+        isSynchronizingSelection = true;
+        try
+        {
+            SourcePreviewGrid.ItemsSource = sourceTable.DefaultView;
+            TargetPreviewGrid.ItemsSource = targetTable.DefaultView;
+            SourcePreviewGrid.SelectedItems.Clear();
+            TargetPreviewGrid.SelectedItems.Clear();
+        }
+        finally
+        {
+            isSynchronizingSelection = false;
+        }
+        UpdateRowSelectionSummary();
+    }
+
+    private static bool MatchesFilter(PreviewRow? row, string filter) =>
+        row is not null && row.Cells.Any(cell =>
+            cell.Contains(filter, StringComparison.OrdinalIgnoreCase));
+
+    private void ToggleTablePanel_Click(object sender, RoutedEventArgs e)
+    {
+        isTablePanelCollapsed = !isTablePanelCollapsed;
+        TablePanel.Visibility = isTablePanelCollapsed ? Visibility.Collapsed : Visibility.Visible;
+        TablePanelColumn.Width = isTablePanelCollapsed ? new GridLength(0) : new GridLength(270);
+        TablePanelSpacerColumn.Width = isTablePanelCollapsed ? new GridLength(0) : new GridLength(14);
+        TablePanelToggleArrow.RenderTransform = new ScaleTransform(isTablePanelCollapsed ? -1 : 1, 1);
+        ToggleTablePanelButton.ToolTip = isTablePanelCollapsed
+            ? "テーブル一覧を表示"
+            : "テーブル一覧を隠す";
+    }
+
+    private void MigrationDirection_Click(object sender, RoutedEventArgs e)
+    {
+        isReverseMigration = !isReverseMigration;
+        ClearSelectedRows();
+        UpdateDirectionPresentation();
+        UpdateRowSelectionSummary();
+    }
+
+    private void UpdateDirectionPresentation()
+    {
+        MigrationDirectionIcon.RenderTransform = new RotateTransform(isReverseMigration ? 180 : 0);
+        MigrationDirectionButton.ToolTip = isReverseMigration
+            ? "移行方向: 右から左（クリックして切り替え）"
+            : "移行方向: 左から右（クリックして切り替え）";
+        LeftPreviewTitle.Text = isReverseMigration ? "移行先プレビュー" : "移行元プレビュー";
+        RightPreviewTitle.Text = isReverseMigration ? "移行元プレビュー" : "移行先プレビュー";
+        MoveButton.Content = isReverseMigration
+            ? "選択データを右→左へ移行"
+            : "選択データを左→右へ移行";
+        BackupBeforeCopyCheckBox.ToolTip = isReverseMigration
+            ? "移行前に左側テーブル全体をバックアップします"
+            : "移行前に右側テーブル全体をバックアップします";
+        if (TableList.SelectedItem is MigrationSelectionItem selected)
+            CurrentTableText.Text = isReverseMigration
+                ? $"{selected.Source}  ←  {selected.TargetDisplay}"
+                : $"{selected.Source}  →  {selected.TargetDisplay}";
+        EndpointText.Text = DescribeEndpoints();
+    }
+
     private async Task RefreshCurrentPreviewAsync()
     {
         if (TableList.SelectedItem is not MigrationSelectionItem selected) return;
@@ -76,12 +171,15 @@ public partial class CompareMigrationWindow : Window
         previewCancellation = new CancellationTokenSource();
         var token = previewCancellation.Token;
 
-        CurrentTableText.Text = $"{selected.Source}  →  {selected.TargetDisplay}";
+        CurrentTableText.Text = isReverseMigration
+            ? $"{selected.Source}  ←  {selected.TargetDisplay}"
+            : $"{selected.Source}  →  {selected.TargetDisplay}";
         SourceCountText.Text = "取得中…";
         TargetCountText.Text = "取得中…";
         SchemaSummaryText.Text = "列情報を取得中…";
-        DifferenceText.Text = "比較中";
-        DifferenceBadge.Background = new SolidColorBrush(Color.FromRgb(255, 243, 205));
+        currentAlignedRows = [];
+        visibleAlignedRows = [];
+        currentPreviewColumns = [];
         SourcePreviewGrid.ItemsSource = null;
         TargetPreviewGrid.ItemsSource = null;
         SetPreviewBusy(true, "プレビューを読み込んでいます…");
@@ -93,11 +191,10 @@ public partial class CompareMigrationWindow : Window
             currentPrimaryKeys.Clear();
             currentPrimaryKeys.UnionWith(result.PrimaryKeys);
             currentAlignedRows = result.AlignedRows;
-            SourcePreviewGrid.ItemsSource = result.Source.Rows.DefaultView;
-            TargetPreviewGrid.ItemsSource = result.Target.Rows.DefaultView;
-            SourcePreviewGrid.SelectedItems.Clear();
-            TargetPreviewGrid.SelectedItems.Clear();
-            UpdateRowSelectionSummary();
+            currentPreviewColumns = result.Source.Rows.Columns.Cast<DataColumn>()
+                .Select(column => column.ColumnName)
+                .ToList();
+            ApplyPreviewFilter();
             SourceCountText.Text = $"{result.Source.Count:N0} 件";
             TargetCountText.Text = $"{result.Target.Count:N0} 件";
             var keys = result.PrimaryKeys.Count == 0
@@ -105,19 +202,6 @@ public partial class CompareMigrationWindow : Window
                 : $"主キー: {string.Join(", ", result.PrimaryKeys)}（水色）";
             SchemaSummaryText.Text = $"比較列 {result.ColumnCount}列 / {keys}";
 
-            var difference = result.Target.Count - result.Source.Count;
-            if (difference == 0)
-            {
-                DifferenceText.Text = "件数一致";
-                DifferenceText.Foreground = new SolidColorBrush(Color.FromRgb(23, 102, 67));
-                DifferenceBadge.Background = new SolidColorBrush(Color.FromRgb(220, 252, 231));
-            }
-            else
-            {
-                DifferenceText.Text = $"差 {difference:+#,0;-#,0} 件";
-                DifferenceText.Foreground = new SolidColorBrush(Color.FromRgb(154, 52, 18));
-                DifferenceBadge.Background = new SolidColorBrush(Color.FromRgb(255, 237, 213));
-            }
             StatusText.Text = $"{selected.Source} のプレビューを更新しました";
         }
         catch (OperationCanceledException)
@@ -129,7 +213,6 @@ public partial class CompareMigrationWindow : Window
             SourceCountText.Text = "取得失敗";
             TargetCountText.Text = "取得失敗";
             SchemaSummaryText.Text = exception.Message;
-            DifferenceText.Text = "未比較";
             StatusText.Text = $"プレビューを取得できません: {exception.Message}";
         }
         finally
@@ -389,6 +472,12 @@ public partial class CompareMigrationWindow : Window
 
     private void ClearRows_Click(object sender, RoutedEventArgs e)
     {
+        ClearSelectedRows();
+        UpdateRowSelectionSummary();
+    }
+
+    private void ClearSelectedRows()
+    {
         isSynchronizingSelection = true;
         try
         {
@@ -399,16 +488,18 @@ public partial class CompareMigrationWindow : Window
         {
             isSynchronizingSelection = false;
         }
-        UpdateRowSelectionSummary();
     }
 
     private List<object[]> GetSelectedPrimaryKeys()
     {
         if (currentPrimaryKeys.Count == 0) return [];
-        return SourcePreviewGrid.SelectedItems.Cast<object>()
-            .Select(item => SourcePreviewGrid.Items.IndexOf(item))
-            .Where(index => index >= 0 && index < currentAlignedRows.Count)
-            .Select(index => currentAlignedRows[index].Source)
+        var sourceGrid = isReverseMigration ? TargetPreviewGrid : SourcePreviewGrid;
+        return sourceGrid.SelectedItems.Cast<object>()
+            .Select(item => sourceGrid.Items.IndexOf(item))
+            .Where(index => index >= 0 && index < visibleAlignedRows.Count)
+            .Select(index => isReverseMigration
+                ? visibleAlignedRows[index].Target
+                : visibleAlignedRows[index].Source)
             .Where(row => row is not null)
             .Select(row => row!.KeyValues)
             .ToList();
@@ -417,11 +508,13 @@ public partial class CompareMigrationWindow : Window
     private void UpdateRowSelectionSummary()
     {
         var selectedCount = GetSelectedPrimaryKeys().Count;
-        var selectedRows = SourcePreviewGrid.SelectedItems.Count;
-        var targetOnlyCount = Math.Max(0, selectedRows - selectedCount);
-        RowSelectionSummaryText.Text = targetOnlyCount == 0
+        var sourceGrid = isReverseMigration ? TargetPreviewGrid : SourcePreviewGrid;
+        var selectedRows = sourceGrid.SelectedItems.Count;
+        var unavailableCount = Math.Max(0, selectedRows - selectedCount);
+        var unavailableSide = isReverseMigration ? "右側" : "左側";
+        RowSelectionSummaryText.Text = unavailableCount == 0
             ? $"移行するデータ: {selectedCount:N0}件選択"
-            : $"移行するデータ: {selectedCount:N0}件選択（移行元にない{targetOnlyCount:N0}件は対象外）";
+            : $"移行するデータ: {selectedCount:N0}件選択（{unavailableSide}にない{unavailableCount:N0}件は対象外）";
         if (!isBusy) MoveButton.IsEnabled = selectedCount > 0;
     }
 
@@ -456,10 +549,12 @@ public partial class CompareMigrationWindow : Window
 
         var backupBeforeCopy = BackupBeforeCopyCheckBox.IsChecked == true;
         var backup = backupBeforeCopy ? "事前バックアップ: 有効" : "事前バックアップ: 無効";
+        var fromTable = isReverseMigration ? selectedTable.TargetDisplay : selectedTable.Source;
+        var toTable = isReverseMigration ? selectedTable.Source : selectedTable.TargetDisplay;
         if (!MessageDialogWindow.Confirm(
                 this,
                 $"{selectedKeys.Count:N0}件のデータを移行",
-                $"{selectedTable.Source} → {selectedTable.TargetDisplay}\n\n" +
+                $"{fromTable} → {toTable}\n\n" +
                 $"選択した{selectedKeys.Count:N0}件を追加または更新します。\n" +
                 $"未選択行の更新・削除、テーブルの全削除は行いません。\n\n{backup}"))
             return;
@@ -519,10 +614,18 @@ public partial class CompareMigrationWindow : Window
 
     private ConfigDocument CreateSingleTableDocument(TableDocument source)
     {
+        var sourceTable = isReverseMigration
+            ? (string.IsNullOrWhiteSpace(source.Target) ? source.Source : source.Target)
+            : source.Source;
+        var targetTable = isReverseMigration ? source.Source : source.Target;
         var result = new ConfigDocument
         {
-            SourceConnectionString = document.SourceConnectionString,
-            TargetConnectionString = document.TargetConnectionString,
+            SourceConnectionString = isReverseMigration
+                ? document.TargetConnectionString
+                : document.SourceConnectionString,
+            TargetConnectionString = isReverseMigration
+                ? document.SourceConnectionString
+                : document.TargetConnectionString,
             BatchSize = document.BatchSize,
             CommandTimeoutSeconds = document.CommandTimeoutSeconds,
             SourceConsistency = document.SourceConsistency,
@@ -530,8 +633,8 @@ public partial class CompareMigrationWindow : Window
         };
         result.Tables.Add(new TableDocument
         {
-            Source = source.Source,
-            Target = source.Target,
+            Source = sourceTable,
+            Target = targetTable,
             ColumnList = source.ColumnList is null
                 ? null
                 : currentPrimaryKeys.Concat(source.ColumnList)
@@ -570,7 +673,9 @@ public partial class CompareMigrationWindow : Window
                 return "接続先未設定";
             }
         }
-        return $"{Read(document.SourceConnectionString)}  →  {Read(document.TargetConnectionString)}";
+        var left = Read(document.SourceConnectionString);
+        var right = Read(document.TargetConnectionString);
+        return isReverseMigration ? $"{left}  ←  {right}" : $"{left}  →  {right}";
     }
 
     private static string FormatCellValue(object value) => value switch
@@ -599,6 +704,7 @@ public partial class CompareMigrationWindow : Window
         CancelButton.IsEnabled = busy;
         RefreshButton.IsEnabled = !busy;
         TableList.IsEnabled = !busy;
+        MigrationDirectionButton.IsEnabled = !busy;
         BackupBeforeCopyCheckBox.IsEnabled = !busy;
         ClearRowsButton.IsEnabled = !busy;
         MoveButton.IsEnabled = !busy && GetSelectedPrimaryKeys().Count > 0;

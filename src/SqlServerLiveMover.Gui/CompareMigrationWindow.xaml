@@ -82,12 +82,12 @@
 
         <Grid Grid.Row="1" Margin="20">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="270" />
-                <ColumnDefinition Width="14" />
+                <ColumnDefinition x:Name="TablePanelColumn" Width="270" />
+                <ColumnDefinition x:Name="TablePanelSpacerColumn" Width="14" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <Border Background="White" CornerRadius="8" Padding="16">
+            <Border x:Name="TablePanel" Background="White" CornerRadius="8" Padding="16">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -135,34 +135,63 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <StackPanel>
-                            <TextBlock x:Name="CurrentTableText" Text="テーブルを選択してください"
-                                       FontSize="17" FontWeight="SemiBold" />
-                            <TextBlock x:Name="SchemaSummaryText" Text="列情報を取得するとここに表示されます"
-                                       Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,3,0,0" />
-                            <TextBlock x:Name="RowSelectionSummaryText" Text="移行するデータを選択してください"
-                                       Foreground="{StaticResource AccentBrush}" FontSize="11" FontWeight="SemiBold"
-                                       Margin="0,3,0,0" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Button x:Name="ToggleTablePanelButton"
+                                    Style="{StaticResource SecondaryButton}"
+                                    Width="42" Height="38" Padding="7"
+                                    Click="ToggleTablePanel_Click" Margin="0,0,12,0"
+                                    VerticalAlignment="Center" ToolTip="テーブル一覧を隠す">
+                                <Grid Width="22" Height="20">
+                                    <Border BorderBrush="#557184" BorderThickness="1.5" CornerRadius="2" />
+                                    <Border Width="6" Margin="3" HorizontalAlignment="Left"
+                                            Background="#8FCBD2" CornerRadius="1" />
+                                    <Path x:Name="TablePanelToggleArrow"
+                                          Data="M 17,5 L 12,10 L 17,15"
+                                          Stroke="#36586A" StrokeThickness="1.8"
+                                          StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                          RenderTransformOrigin="0.5,0.5" />
+                                </Grid>
+                            </Button>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock x:Name="CurrentTableText" Text="テーブルを選択してください"
+                                           FontSize="17" FontWeight="SemiBold" />
+                                <TextBlock x:Name="SchemaSummaryText" Text="列情報を取得するとここに表示されます"
+                                           Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,3,0,0" />
+                                <TextBlock x:Name="RowSelectionSummaryText" Text="移行するデータを選択してください"
+                                           Foreground="{StaticResource AccentBrush}" FontSize="11" FontWeight="SemiBold"
+                                           Margin="0,3,0,0" />
+                            </StackPanel>
+                        </Grid>
+                        <Button x:Name="MigrationDirectionButton" Grid.Column="1"
+                                Width="56" Height="56" Padding="4"
+                                Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                Click="MigrationDirection_Click"
+                                HorizontalAlignment="Center" VerticalAlignment="Center"
+                                ToolTip="移行方向: 左から右（クリックして切り替え）">
+                            <Path x:Name="MigrationDirectionIcon"
+                                  Data="M 0,0 L 30,18 L 0,36 Z"
+                                  Fill="#A9C3CC"
+                                  Stretch="Uniform" Width="30" Height="36"
+                                  RenderTransformOrigin="0.5,0.5" />
+                        </Button>
+                        <StackPanel Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <TextBlock Text="プレビューを絞り込み" FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{StaticResource MutedBrush}" Margin="0,0,0,3" />
+                            <StackPanel Orientation="Horizontal">
+                                <TextBox x:Name="PreviewFilterTextBox" Width="210" Padding="8,5"
+                                         TextChanged="PreviewFilter_TextChanged"
+                                         ToolTip="左右いずれかに含まれる文字列で絞り込みます" />
+                                <Button Content="解除" Style="{StaticResource SecondaryButton}"
+                                        Padding="10,6" Margin="6,0,0,0"
+                                        Click="ClearPreviewFilter_Click" />
+                            </StackPanel>
                         </StackPanel>
-                        <Border Grid.Column="1" Background="#EDF8F8" CornerRadius="6" Padding="13,7" Margin="12,0,0,0">
-                            <StackPanel>
-                                <TextBlock Text="移行元" Foreground="{StaticResource AccentBrush}" FontSize="10" FontWeight="Bold" />
-                                <TextBlock x:Name="SourceCountText" Text="— 件" FontSize="17" FontWeight="SemiBold" />
-                            </StackPanel>
-                        </Border>
-                        <Border Grid.Column="2" Background="#EEF4FA" CornerRadius="6" Padding="13,7" Margin="8,0,0,0">
-                            <StackPanel>
-                                <TextBlock Text="移行先" Foreground="#2F6690" FontSize="10" FontWeight="Bold" />
-                                <TextBlock x:Name="TargetCountText" Text="— 件" FontSize="17" FontWeight="SemiBold" />
-                            </StackPanel>
-                        </Border>
-                        <Border Grid.Column="3" x:Name="DifferenceBadge" Background="#FFF3CD" CornerRadius="14"
-                                Padding="12,6" Margin="10,0,0,0" VerticalAlignment="Center">
-                            <TextBlock x:Name="DifferenceText" Text="未比較" Foreground="#7A5D00" FontSize="11" FontWeight="SemiBold" />
-                        </Border>
                     </Grid>
                 </Border>
 
@@ -178,7 +207,15 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
-                            <TextBlock Text="移行元プレビュー" FontSize="14" FontWeight="SemiBold" Margin="2,0,0,10" />
+                            <Grid Margin="2,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock x:Name="LeftPreviewTitle" Text="移行元プレビュー" FontSize="14" FontWeight="SemiBold" />
+                                <TextBlock x:Name="SourceCountText" Grid.Column="1" Text="— 件"
+                                           FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" />
+                            </Grid>
                             <DataGrid x:Name="SourcePreviewGrid" Grid.Row="1" Style="{StaticResource PreviewGrid}"
                                       SelectionMode="Extended" SelectionUnit="FullRow"
                                       AutoGeneratingColumn="PreviewGrid_AutoGeneratingColumn"
@@ -192,7 +229,15 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
-                            <TextBlock Text="移行先プレビュー" FontSize="14" FontWeight="SemiBold" Margin="2,0,0,10" />
+                            <Grid Margin="2,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock x:Name="RightPreviewTitle" Text="移行先プレビュー" FontSize="14" FontWeight="SemiBold" />
+                                <TextBlock x:Name="TargetCountText" Grid.Column="1" Text="— 件"
+                                           FontSize="14" FontWeight="SemiBold" Foreground="#2F6690" />
+                            </Grid>
                             <DataGrid x:Name="TargetPreviewGrid" Grid.Row="1" Style="{StaticResource PreviewGrid}"
                                       SelectionMode="Extended" SelectionUnit="FullRow"
                                       AutoGeneratingColumn="PreviewGrid_AutoGeneratingColumn"
@@ -226,7 +271,7 @@
                             Click="Refresh_Click" Margin="0,0,8,0" />
                     <Button x:Name="PreflightButton" Content="テーブルを事前検査" Style="{StaticResource SecondaryButton}"
                             Click="Preflight_Click" Margin="0,0,8,0" />
-                    <Button x:Name="MoveButton" Content="選択したデータを移行" Style="{StaticResource PrimaryButton}"
+                    <Button x:Name="MoveButton" Content="選択データを左→右へ移行" Style="{StaticResource PrimaryButton}"
                             Click="Move_Click" Margin="0,0,8,0" />
                     <Button x:Name="CancelButton" Content="中止" Style="{StaticResource SecondaryButton}"
                             Click="Cancel_Click" IsEnabled="False" Margin="0,0,8,0" />
