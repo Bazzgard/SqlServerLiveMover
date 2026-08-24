@@ -113,6 +113,9 @@
                                   BorderBrush="#D5DEE7" RowHeaderWidth="0" RowHeight="42"
                                   FontFamily="Yu Gothic UI" FontSize="12">
                             <DataGrid.Columns>
+                                <DataGridCheckBoxColumn Header="対象"
+                                                        Binding="{Binding IsSelectedForCopy, UpdateSourceTrigger=PropertyChanged}"
+                                                        Width="58" />
                                 <DataGridTextColumn Header="移行元" Binding="{Binding Source, UpdateSourceTrigger=PropertyChanged}" Width="1.2*" />
                                 <DataGridTextColumn Header="移行先" Binding="{Binding Target, UpdateSourceTrigger=PropertyChanged}" Width="1.2*" />
                                 <DataGridTextColumn Header="列（カンマ区切り）" Binding="{Binding ColumnsText, UpdateSourceTrigger=PropertyChanged}" Width="1.5*" />

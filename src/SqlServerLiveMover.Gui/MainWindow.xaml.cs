@@ -106,19 +106,25 @@ public partial class MainWindow : Window
     private async void Copy_Click(object sender, RoutedEventArgs e)
     {
         CommitGridEdits();
-        var destructiveTargets = document.Tables
+        var selectedTables = GetSelectedTables();
+        if (selectedTables.Count == 0)
+        {
+            ShowError("コピー対象がありません", "テーブル一覧で対象にするテーブルへチェックを付けてください。");
+            return;
+        }
+        var destructiveTargets = selectedTables
             .Where(table => table.OperationMode == "replace")
             .Select(table => string.IsNullOrWhiteSpace(table.Target) ? table.Source : table.Target)
             .ToList();
-        var backupTargets = document.Tables
+        var backupTargets = selectedTables
             .Where(table => table.BackupBeforeCopy && table.OperationMode != "emptyOnly")
             .Select(table => string.IsNullOrWhiteSpace(table.Target) ? table.Source : table.Target)
             .ToList();
-        var deleteTargets = document.Tables
+        var deleteTargets = selectedTables
             .Where(table => table.OperationMode == "upsertDelete")
             .Select(table => string.IsNullOrWhiteSpace(table.Target) ? table.Source : table.Target)
             .ToList();
-        var detail = "選択された処理方式でコピー／差分更新を実行します。";
+        var detail = $"チェックされた{selectedTables.Count:N0}テーブルを対象に、選択された処理方式でコピー／差分更新を実行します。";
         if (destructiveTargets.Count > 0)
             detail += "\n\n次の移行先テーブルをトランザクション内で空にしてからコピーします:\n\n" +
                       string.Join("\n", destructiveTargets);
@@ -143,6 +149,12 @@ public partial class MainWindow : Window
         Func<MigrationEngine, CancellationToken, Task> operation)
     {
         CommitGridEdits();
+        var selectedTables = GetSelectedTables();
+        if (selectedTables.Count == 0)
+        {
+            ShowError($"{operationName}対象がありません", "テーブル一覧で対象にするテーブルへチェックを付けてください。");
+            return;
+        }
         SaveLastSession();
         SetBusy(true, $"{operationName}を実行中...");
         AppendLog($"\n[{DateTime.Now:HH:mm:ss}] {operationName}を開始");
@@ -150,7 +162,8 @@ public partial class MainWindow : Window
 
         try
         {
-            var configJson = JsonSerializer.Serialize(document, JsonOptions);
+            var operationDocument = CreateOperationDocument(selectedTables);
+            var configJson = JsonSerializer.Serialize(operationDocument, JsonOptions);
             var token = operationCancellation.Token;
             await Task.Run(async () =>
             {
@@ -178,6 +191,26 @@ public partial class MainWindow : Window
             operationCancellation = null;
             SetBusy(false, StatusText.Text);
         }
+    }
+
+    private List<TableDocument> GetSelectedTables() => document.Tables
+        .Where(table => table.IsSelectedForCopy)
+        .ToList();
+
+    private ConfigDocument CreateOperationDocument(IEnumerable<TableDocument> selectedTables)
+    {
+        var result = new ConfigDocument
+        {
+            SourceConnectionString = document.SourceConnectionString,
+            TargetConnectionString = document.TargetConnectionString,
+            BatchSize = document.BatchSize,
+            CommandTimeoutSeconds = document.CommandTimeoutSeconds,
+            SourceConsistency = document.SourceConsistency,
+            BackupBeforeCopy = document.BackupBeforeCopy
+        };
+        foreach (var table in selectedTables) result.Tables.Add(table);
+        result.ApplyGlobalSettings();
+        return result;
     }
 
     private void Cancel_Click(object sender, RoutedEventArgs e)

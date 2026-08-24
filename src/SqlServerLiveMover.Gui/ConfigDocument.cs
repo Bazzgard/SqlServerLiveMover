@@ -33,6 +33,9 @@ internal sealed class ConfigDocument
 
 internal sealed class TableDocument
 {
+    [JsonIgnore]
+    public bool IsSelectedForCopy { get; set; } = true;
+
     public string Source { get; set; } = "dbo.SourceTable";
     public string? Target { get; set; }
 
